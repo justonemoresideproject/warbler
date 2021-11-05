@@ -1,0 +1,12 @@
+Changes:
+    app.py line 64 had 'If the there', changed to 'If there'
+
+    implemented logout
+
+    implemented bio, location, and header image for user profile
+
+    implemented edit profile form and route ('/users/profile')
+
+    created edit profile form
+
+    implemented bio in followers, following, and list-users pages
