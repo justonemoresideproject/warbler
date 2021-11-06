@@ -5,8 +5,14 @@ Changes:
 
     implemented bio, location, and header image for user profile
 
-    implemented edit profile form and route ('/users/profile')
+    implemented bio in followers, following, and list-users pages
 
     created edit profile form
 
-    implemented bio in followers, following, and list-users pages
+    implemented edit profile form and route ('/users/profile')
+
+    fixed homepage, now only shows users warbles and following warbles
+
+    added like and unlike functionality. Neither use ajax so the page refreshes to show the different colored thumbs up.
+
+    

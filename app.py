@@ -3,9 +3,9 @@ import os
 from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
-
-from forms import UserAddForm, LoginForm, MessageForm
-from models import db, connect_db, User, Message
+from sqlalchemy import or_
+from forms import UserAddForm, LoginForm, MessageForm, EditProfile
+from models import db, connect_db, User, Message, Likes
 
 CURR_USER_KEY = "curr_user"
 
@@ -24,6 +24,11 @@ toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
 
+# what is g? 
+# https://stackoverflow.com/questions/30514749/what-is-the-g-object-in-this-flask-code
+# g is an object provided by Flask. It is a global namespace for holding any data you want during a single app context. For example, a before_request handler could set g.user, which will be accessible to the route and other functions.
+
+# An app context lasts for one request / response cycle, g is not appropriate for storing data across requests.
 
 ##############################################################################
 # User signup/login/logout
@@ -137,6 +142,37 @@ def list_users():
 
     return render_template('users/index.html', users=users)
 
+@app.route('/users/add_like/<int:message_id>', methods=['POST'])
+def add_user_like(message_id):
+    """Add like to message by creating a new like object and adding to db"""
+
+    message = Message.query.get_or_404(message_id)
+    user = User.query.get(session[CURR_USER_KEY])
+
+    if message.user_id == user.id:
+        flash('You cannot like your own content')
+        return redirect('/')
+
+    like = Likes(
+        message_id = message.id,
+        user_id = user.id
+    )
+
+    db.session.add(like)
+    db.session.commit()
+
+    return redirect('/')
+
+@app.route('/users/unlike/<int:message_id>', methods=['POST'])
+def unlike(message_id):
+    message = Message.query.get_or_404(message_id)
+    
+    Likes.query.filter_by(message_id=message.id, user_id=session[CURR_USER_KEY]).delete()
+    
+    db.session.commit()
+
+    return redirect('/')
+
 
 @app.route('/users/<int:user_id>')
 def users_show(user_id):
@@ -214,14 +250,31 @@ def profile():
     """Update profile for current user."""
 
     # IMPLEMENT THIS
-    if CURR_USER_KEY in session:
-        user = User.query.get_or_404(session[CURR_USER_KEY])
-        form = EditProfile()
-
-        return render_template('users/edit.html', user=user, form=form)
+    if CURR_USER_KEY not in session:    
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
     
-    flash("Access unauthorized.", "danger")
-    return redirect("/")
+    user = User.query.get_or_404(session[CURR_USER_KEY])
+    form = EditProfile(obj=user)
+
+    if form.validate_on_submit():
+        if user.authenticate(user.username, form.password.data):
+            user.username = form.username.data
+            user.email = form.email.data
+            user.bio = form.bio.data
+            user.location = form.location.data
+            user.image_url = form.image_url.data or "/static/images/default-pic.png"
+            user.header_image_url = form.header_image_url.data or "/static/images/default-pic.png"
+
+            db.session.add(user)
+            db.session.commit()
+
+            return redirect(f'/users/{g.user.id}')
+        else:
+            form.password.errors = 'Incorrect password'
+            render_template('users/edit.html', form=form, user=user)
+
+    return render_template('users/edit.html', user=user, form=form)
 
 
 @app.route('/users/delete', methods=["POST"])
@@ -301,13 +354,21 @@ def homepage():
     """
 
     if g.user:
+        likes = []
+        for like in g.user.likes:
+            likes.append(like.id)
+        following = g.user.following
+        following_id = []
+        for follow in following:
+            following_id.append(follow.id)
         messages = (Message
                     .query
+                    .filter(or_(Message.user_id.in_(following_id), Message.user_id == g.user.id))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
 
-        return render_template('home.html', messages=messages)
+        return render_template('home.html', messages=messages, likes=likes)
 
     else:
         return render_template('home-anon.html')
