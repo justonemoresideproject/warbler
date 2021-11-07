@@ -345,6 +345,12 @@ def messages_destroy(message_id):
 ##############################################################################
 # Homepage and error pages
 
+@app.errorhandler(404)
+def page_not_found(e):
+    """404 error page"""
+
+    return render_template('404page.html'), 404
+
 @app.route('/')
 def homepage():
     """Show homepage:

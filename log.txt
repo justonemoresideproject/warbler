@@ -15,4 +15,16 @@ Changes:
 
     added like and unlike functionality. Neither use ajax so the page refreshes to show the different colored thumbs up.
 
+    set total number of likes on user profile page.
+
+    set tests for user models in test_user_model.py
+
+    set tests for user views in test_user_views.py
+
+    set tests for message model in test_message_model.py
+
+    set tests for message views in test_message_views.py
+
+    added 404 missing page error handling
+
     
